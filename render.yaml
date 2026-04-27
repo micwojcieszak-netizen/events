@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: event-radar
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --timeout 120 --workers 2
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false           # you fill this in Render dashboard
+      # ── SharePoint (optional) ──────────────────────────────────────
+      - key: SP_TENANT_ID
+        sync: false
+      - key: SP_CLIENT_ID
+        sync: false
+      - key: SP_CLIENT_SECRET
+        sync: false
+      - key: SP_SITE_URL
+        sync: false           # e.g. https://yourcompany.sharepoint.com/sites/YourSite
+      - key: SP_FOLDER_PATH
+        value: Shared Documents/Events

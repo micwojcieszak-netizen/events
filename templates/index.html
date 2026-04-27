@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Event Radar</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06090f;--surface:#0f172a;--surface2:#1e293b;--border:#1e293b;
+  --text:#e2e8f0;--muted:#64748b;--accent:#3b82f6;--accent2:#6366f1;
+  --green:#22c55e;--red:#ef4444;--orange:#f59e0b;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+
+/* ── Layout ── */
+.shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:16px}
+.main{padding:24px;overflow-x:hidden;display:flex;flex-direction:column;gap:20px}
+
+/* ── Sidebar ── */
+.logo{display:flex;align-items:center;gap:10px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:grid;place-items:center;font-size:18px;flex-shrink:0}
+.logo-text{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;letter-spacing:-.5px}
+.logo-sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+.section-label{font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
+
+textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:10px;resize:vertical;height:260px;line-height:1.8;outline:none;transition:border .2s}
+textarea:focus{border-color:var(--accent)}
+
+.months{display:flex;gap:6px}
+.m-btn{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;padding:6px;border-radius:6px;cursor:pointer;transition:all .15s;text-align:center}
+.m-btn.active{background:rgba(59,130,246,.15);border-color:var(--accent);color:#60a5fa}
+
+.run-btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;padding:13px;border-radius:9px;cursor:pointer;letter-spacing:.8px;transition:opacity .2s,transform .1s;margin-top:4px}
+.run-btn:hover{opacity:.9;transform:translateY(-1px)}
+.run-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+.btn-row{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
+.action-btn{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:10px;border-radius:8px;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.action-btn:hover{background:#334155}
+.action-btn:disabled{opacity:.35;cursor:not-allowed}
+.action-btn.sp{border-color:rgba(0,120,212,.4);color:#60a5fa}
+.action-btn.sp:hover{background:rgba(0,120,212,.1)}
+
+.status-dot{width:8px;height:8px;border-radius:50%;background:#1e293b;flex-shrink:0}
+.status-dot.ok{background:var(--green);box-shadow:0 0 5px var(--green)}
+.status-dot.warn{background:var(--orange)}
+.status-dot.bad{background:var(--red)}
+.cfg-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+
+/* ── Main area ── */
+.topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.page-title{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;letter-spacing:-.5px}
+.chip{background:rgba(59,130,246,.15);color:#60a5fa;font-size:10px;font-family:'Space Mono',monospace;padding:3px 10px;border-radius:20px;border:1px solid rgba(59,130,246,.3)}
+.last-run{margin-left:auto;font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
+
+/* ── Progress log ── */
+.log-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);min-height:60px;max-height:120px;overflow-y:auto;line-height:1.8}
+.log-line{color:#94a3b8}
+.log-line.ok{color:var(--green)}
+.log-line.err{color:var(--red)}
+.log-line.info{color:#60a5fa}
+
+.progress-track{height:3px;background:var(--surface2);border-radius:2px;margin-top:8px;overflow:hidden}
+.progress-bar{height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;width:0%;transition:width .5s ease}
+
+/* ── Summary cards ── */
+.cards{display:flex;gap:12px;flex-wrap:wrap}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;min-width:130px;flex:1}
+.card-num{font-family:'Space Mono',monospace;font-size:26px;font-weight:700;color:var(--text)}
+.card-label{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* ── Filters ── */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filter-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .15s}
+.filter-btn.active{background:rgba(59,130,246,.15);border-color:var(--accent);color:#60a5fa}
+.search-input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:12px;padding:6px 12px;border-radius:6px;outline:none;width:200px;transition:border .2s}
+.search-input:focus{border-color:var(--accent)}
+.search-input::placeholder{color:var(--muted)}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{background:var(--surface);position:sticky;top:0;z-index:1}
+th{font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--text)}
+td{padding:9px 14px;border-bottom:1px solid rgba(30,41,59,.7);color:#cbd5e1;vertical-align:middle}
+tr:hover td{background:rgba(59,130,246,.03)}
+tr:last-child td{border-bottom:none}
+
+.badge{display:inline-block;font-size:9px;padding:2px 7px;border-radius:4px;font-family:'Space Mono',monospace;font-weight:700;white-space:nowrap}
+.b-nfl{background:rgba(26,86,219,.2);color:#60a5fa;border:1px solid rgba(26,86,219,.3)}
+.b-nba{background:rgba(227,0,15,.15);color:#f87171;border:1px solid rgba(227,0,15,.25)}
+.b-nhl{background:rgba(0,83,156,.2);color:#93c5fd;border:1px solid rgba(0,83,156,.3)}
+.b-mlb{background:rgba(0,45,114,.25);color:#a5b4fc;border:1px solid rgba(0,45,114,.35)}
+.b-mls{background:rgba(25,35,109,.25);color:#818cf8;border:1px solid rgba(25,35,109,.35)}
+.b-soccer{background:rgba(0,153,0,.15);color:#4ade80;border:1px solid rgba(0,153,0,.25)}
+.b-concert{background:rgba(124,58,237,.15);color:#c4b5fd;border:1px solid rgba(124,58,237,.25)}
+.b-entertainment{background:rgba(217,119,6,.15);color:#fbbf24;border:1px solid rgba(217,119,6,.25)}
+.b-other{background:rgba(107,114,128,.15);color:#9ca3af;border:1px solid rgba(107,114,128,.25)}
+
+.venue-tag{display:inline-block;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);color:#a78bfa;font-size:10px;padding:2px 7px;border-radius:4px;font-family:'Space Mono',monospace;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mono{font-family:'Space Mono',monospace;font-size:10px}
+.gmt{color:#60a5fa}
+.event-name-cell{font-weight:500;color:#f1f5f9;max-width:220px}
+.source-link{color:var(--accent);font-size:10px;font-family:'Space Mono',monospace}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:56px 24px;color:#334155;font-family:'Space Mono',monospace;font-size:12px}
+.empty-icon{font-size:40px;margin-bottom:14px}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:24px;right:24px;background:#1e293b;border:1px solid var(--border);color:var(--text);font-size:12px;padding:12px 18px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);opacity:0;transition:opacity .3s;z-index:999;max-width:320px;font-family:'Space Mono',monospace}
+#toast.show{opacity:1}
+#toast.err{border-color:var(--red);color:#fca5a5}
+#toast.ok{border-color:var(--green);color:#86efac}
+
+@media(max-width:800px){.shell{grid-template-columns:1fr;}.sidebar{border-right:none;border-bottom:1px solid var(--border)}}
+</style>
+</head>
+<body>
+
+<div class="shell">
+<!-- ══════════ SIDEBAR ══════════ -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">🏟️</div>
+    <div>
+      <div class="logo-text">EVENT RADAR</div>
+      <div class="logo-sub">Powered by Claude AI</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">Venues / Teams</div>
+    <textarea id="venuesInput">{{ '\n'.join(default_venues) }}</textarea>
+  </div>
+
+  <div>
+    <div class="section-label">Horizon</div>
+    <div class="months">
+      <div class="m-btn" onclick="setMonths(1,this)">1 mo</div>
+      <div class="m-btn active" onclick="setMonths(3,this)">3 mo</div>
+      <div class="m-btn" onclick="setMonths(6,this)">6 mo</div>
+    </div>
+  </div>
+
+  <button class="run-btn" id="runBtn" onclick="startFetch()">⚡ FETCH EVENTS</button>
+
+  <div class="btn-row">
+    <button class="action-btn" id="xlsBtn" disabled onclick="downloadExcel()">
+      📊 Download Excel (.xlsx)
+    </button>
+    <button class="action-btn sp" id="spBtn" disabled onclick="uploadSharePoint()"
+      title="{{ 'SharePoint configured' if sharepoint_ok else 'Add SP_* env vars to enable' }}">
+      ☁️ Upload to SharePoint
+      {% if not sharepoint_ok %}<span style="font-size:9px;opacity:.5"> (not configured)</span>{% endif %}
+    </button>
+  </div>
+
+  <div style="border-top:1px solid var(--border);padding-top:12px">
+    <div class="cfg-row">
+      <div class="status-dot {{ 'ok' if anthropic_ok else 'bad' }}"></div>
+      Anthropic API {{ 'connected' if anthropic_ok else '— set ANTHROPIC_API_KEY' }}
+    </div>
+    <div class="cfg-row" style="margin-top:6px">
+      <div class="status-dot {{ 'ok' if sharepoint_ok else 'warn' }}"></div>
+      SharePoint {{ 'connected' if sharepoint_ok else '— optional' }}
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════ MAIN ══════════ -->
+<main class="main">
+  <div class="topbar">
+    <div class="page-title">Event Dashboard</div>
+    <div class="chip" id="countChip">0 events</div>
+    <div class="last-run" id="lastRunLabel"></div>
+  </div>
+
+  <!-- Progress log -->
+  <div>
+    <div class="log-box" id="logBox">
+      <div class="log-line">Ready. Configure venues and click Fetch Events.</div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="cards" id="cardsRow" style="display:none">
+    <div class="card"><div class="card-num" id="cTotal">0</div><div class="card-label">Total Events</div></div>
+    <div class="card"><div class="card-num" id="cSports">0</div><div class="card-label">Sports Games</div></div>
+    <div class="card"><div class="card-num" id="cConcerts">0</div><div class="card-label">Concerts</div></div>
+    <div class="card"><div class="card-num" id="cVenues">0</div><div class="card-label">Venues</div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters" id="filtersRow" style="display:none">
+    <input class="search-input" id="searchInput" placeholder="Search events..." oninput="applyFilters()">
+    <div class="filter-btn active" data-type="ALL" onclick="setTypeFilter('ALL',this)">All</div>
+    <div class="filter-btn" data-type="NFL" onclick="setTypeFilter('NFL',this)">NFL</div>
+    <div class="filter-btn" data-type="NBA" onclick="setTypeFilter('NBA',this)">NBA</div>
+    <div class="filter-btn" data-type="NHL" onclick="setTypeFilter('NHL',this)">NHL</div>
+    <div class="filter-btn" data-type="MLB" onclick="setTypeFilter('MLB',this)">MLB</div>
+    <div class="filter-btn" data-type="MLS" onclick="setTypeFilter('MLS',this)">MLS</div>
+    <div class="filter-btn" data-type="Soccer" onclick="setTypeFilter('Soccer',this)">Soccer</div>
+    <div class="filter-btn" data-type="Concert" onclick="setTypeFilter('Concert',this)">Concert</div>
+    <div class="filter-btn" data-type="Entertainment" onclick="setTypeFilter('Entertainment',this)">Other</div>
+  </div>
+
+  <!-- Table -->
+  <div id="tableArea">
+    <div class="empty">
+      <div class="empty-icon">📡</div>
+      No events loaded.<br>Add venues in the sidebar and hit Fetch.
+    </div>
+  </div>
+</main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let months = 3;
+let allEvents = [];
+let typeFilter = 'ALL';
+let es = null;
+
+function setMonths(n, el) {
+  months = n;
+  document.querySelectorAll('.m-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function log(msg, cls='log-line') {
+  const box = document.getElementById('logBox');
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = '› ' + msg;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setProgress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => t.className = '', 3500);
+}
+
+async function startFetch() {
+  const venues = document.getElementById('venuesInput').value
+    .split('\n').map(v => v.trim()).filter(Boolean);
+  if (!venues.length) { toast('Please enter at least one venue', 'err'); return; }
+
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('logBox').innerHTML = '';
+  setProgress(0);
+  allEvents = [];
+  renderTable([]);
+  log(`Starting search for ${venues.length} venues over ${months} months...`, 'log-line info');
+
+  // Open SSE stream
+  if (es) es.close();
+  es = new EventSource('/stream');
+  es.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'ping') return;
+
+    if (msg.type === 'progress') {
+      log(msg.msg, 'log-line');
+      setProgress(msg.pct);
+    } else if (msg.type === 'batch_done') {
+      allEvents.push(...(msg.new_events || []));
+      document.getElementById('countChip').textContent = allEvents.length + ' events';
+      log(`  ✓ Found ${(msg.new_events||[]).length} events (total: ${msg.total})`, 'log-line ok');
+      renderTable(allEvents);
+    } else if (msg.type === 'done') {
+      log(`✓ Complete — ${msg.count} events loaded`, 'log-line ok');
+      setProgress(100);
+      document.getElementById('lastRunLabel').textContent = 'Last run: ' + msg.last_run;
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('xlsBtn').disabled = false;
+      document.getElementById('spBtn').disabled = false;
+      updateCards(allEvents);
+      document.getElementById('cardsRow').style.display = 'flex';
+      document.getElementById('filtersRow').style.display = 'flex';
+      setTimeout(() => setProgress(0), 1500);
+      es.close();
+      toast(`Loaded ${msg.count} events`, 'ok');
+    } else if (msg.type === 'error') {
+      log('ERROR: ' + msg.msg, 'log-line err');
+      document.getElementById('runBtn').disabled = false;
+      setProgress(0);
+      es.close();
+      toast('Error: ' + msg.msg, 'err');
+    } else if (msg.type === 'start') {
+      log(`Querying Claude with web search...`, 'log-line info');
+    }
+  };
+  es.onerror = () => { es.close(); };
+
+  // POST to start job
+  const resp = await fetch('/api/fetch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ venues, months })
+  });
+  if (!resp.ok) {
+    const err = await resp.json();
+    log('Failed to start: ' + err.error, 'log-line err');
+    document.getElementById('runBtn').disabled = false;
+    toast(err.error, 'err');
+    es.close();
+  }
+}
+
+function updateCards(events) {
+  const sportsTypes = ['NFL','NBA','NHL','MLB','MLS','Soccer'];
+  const venues = new Set(events.map(e => e.venue_name));
+  document.getElementById('cTotal').textContent = events.length;
+  document.getElementById('cSports').textContent = events.filter(e => sportsTypes.includes(e.event_type)).length;
+  document.getElementById('cConcerts').textContent = events.filter(e => e.event_type === 'Concert').length;
+  document.getElementById('cVenues').textContent = venues.size;
+}
+
+function setTypeFilter(type, el) {
+  typeFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let filtered = allEvents;
+  if (typeFilter !== 'ALL') {
+    const isOther = typeFilter === 'Entertainment';
+    filtered = filtered.filter(e => isOther
+      ? !['NFL','NBA','NHL','MLB','MLS','Soccer','Concert'].includes(e.event_type)
+      : e.event_type === typeFilter);
+  }
+  if (q) {
+    filtered = filtered.filter(e =>
+      Object.values(e).some(v => String(v).toLowerCase().includes(q))
+    );
+  }
+  renderTable(filtered);
+}
+
+let sortKey = 'event_date', sortDir = 1;
+function sortBy(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = 1; }
+  allEvents.sort((a,b) => String(a[key]||'').localeCompare(String(b[key]||'')) * sortDir);
+  applyFilters();
+}
+
+const TYPE_CLASS = {
+  NFL:'b-nfl',NBA:'b-nba',NHL:'b-nhl',MLB:'b-mlb',MLS:'b-mls',
+  Soccer:'b-soccer',Concert:'b-concert',Entertainment:'b-entertainment',Other:'b-other'
+};
+
+function renderTable(events) {
+  if (!events.length) {
+    document.getElementById('tableArea').innerHTML = `
+      <div class="empty"><div class="empty-icon">🔍</div>No events match the current filter.</div>`;
+    return;
+  }
+
+  const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows = events.map(e => {
+    const cls = TYPE_CLASS[e.event_type] || 'b-other';
+    return `<tr>
+      <td><span class="venue-tag" title="${esc(e.venue_name)}">${esc(e.venue_name)}</span></td>
+      <td style="font-size:11px;color:var(--muted);max-width:160px">${esc(e.venue_address)}</td>
+      <td class="event-name-cell">${esc(e.event_name)}</td>
+      <td><span class="badge ${cls}">${esc(e.event_type)}</span></td>
+      <td class="mono" style="font-weight:600">${esc(e.event_date)}</td>
+      <td class="mono">${esc(e.event_time_local)}</td>
+      <td class="mono gmt">${esc(e.event_time_gmt2)}</td>
+      <td class="mono">${esc(e.duration_scheduled)}</td>
+      <td style="font-size:11px;max-width:160px">${esc(e.capacity_or_tickets)}</td>
+      <td>${e.source_url ? `<a class="source-link" href="${esc(e.source_url)}" target="_blank">→ source</a>` : ''}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tableArea').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th onclick="sortBy('venue_name')">Venue ↕</th>
+          <th>Address</th>
+          <th onclick="sortBy('event_name')">Event ↕</th>
+          <th onclick="sortBy('event_type')">Type ↕</th>
+          <th onclick="sortBy('event_date')">Date ↕</th>
+          <th>Local Time</th>
+          <th>GMT+2</th>
+          <th>Duration</th>
+          <th>Capacity / Tickets</th>
+          <th>Source</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+async function downloadExcel() {
+  toast('Generating Excel file…');
+  window.location.href = '/api/export/excel';
+}
+
+async function uploadSharePoint() {
+  const btn = document.getElementById('spBtn');
+  btn.disabled = true;
+  log('Uploading to SharePoint…', 'log-line info');
+  try {
+    const resp = await fetch('/api/sharepoint/upload', { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) {
+      log(`✓ Uploaded: ${data.filename}`, 'log-line ok');
+      toast('Uploaded to SharePoint!', 'ok');
+    } else {
+      log('SharePoint error: ' + data.error, 'log-line err');
+      toast(data.error, 'err');
+    }
+  } catch(e) {
+    log('Network error', 'log-line err');
+    toast('Network error', 'err');
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
