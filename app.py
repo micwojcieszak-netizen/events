@@ -1,4 +1,4 @@
-import os, json, threading, queue, io
+import os, json, threading, queue, io, gc
 from flask import Flask, render_template, jsonify, request, send_file, Response, stream_with_context
 from datetime import datetime
 from dotenv import load_dotenv
@@ -114,7 +114,7 @@ def api_fetch():
         try:
             fetcher = EventFetcher(api_key=os.getenv("ANTHROPIC_API_KEY"))
             all_events = []
-            batch_size = 4
+            batch_size = 2  # Reduced for 512MB RAM limit (free tier)
             batches = [venues[i : i + batch_size] for i in range(0, len(venues), batch_size)]
 
             for idx, batch in enumerate(batches):
@@ -126,6 +126,7 @@ def api_fetch():
                 events = fetcher.fetch(batch, months)
                 all_events.extend(events)
                 push({"type": "batch_done", "new_events": events, "total": len(all_events)})
+                gc.collect()  # Free memory after each batch
 
             state["events"] = sorted(all_events, key=lambda e: e.get("event_date", "9999"))
             state["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M")

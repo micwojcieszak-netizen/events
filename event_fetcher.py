@@ -8,8 +8,8 @@ import json
 import anthropic
 from datetime import datetime, timedelta
 
-# Best model for web research tasks
-MODEL = "claude-opus-4-5"
+# Use Haiku for low memory footprint (free tier compatible)
+MODEL = "claude-sonnet-4-20250514"
 
 class EventFetcher:
     def __init__(self, api_key: str):
@@ -24,7 +24,7 @@ class EventFetcher:
 
         response = self.client.messages.create(
             model=MODEL,
-            max_tokens=8000,
+            max_tokens=4000,  # Reduced for memory optimization
             tools=[{"type": "web_search_20250305", "name": "web_search"}],
             messages=[{"role": "user", "content": prompt}],
         )

@@ -3,7 +3,7 @@ services:
     name: event-radar
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --timeout 120 --workers 2
+    startCommand: gunicorn app:app --timeout 180 --workers 1 --worker-class sync
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false           # you fill this in Render dashboard
